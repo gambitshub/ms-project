@@ -87,6 +87,7 @@ def run(args, trainset, testset, action):
     if args.store and os.path.isfile(args.store):
         model.load_state_dict(torch.load(args.store, map_location='cpu'))
 
+    # print("Pretrained model path:", args.pretrained)
     if args.pretrained:
         assert os.path.isfile(args.pretrained)
         model.load_state_dict(torch.load(args.pretrained, map_location='cpu'))

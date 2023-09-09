@@ -275,14 +275,25 @@ def get_categories(args):
 
 def get_datasets(args):
     BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+    print(BASE_DIR)
+    PARENT_DIR = os.path.dirname(BASE_DIR)  # This will give the parent directory of BASE_DIR
+    print(PARENT_DIR)
+    PARENT_PARENT_DIR = os.path.dirname(PARENT_DIR)  # This will give the parent directory of BASE_DIR
+    print(PARENT_PARENT_DIR)
     DATA_DIR = {
         'modelnet': os.path.join(BASE_DIR, 'fmr', 'data', 'ModelNet40'),
         '7scene': os.path.join(BASE_DIR, 'fmr', 'data', '7scene'),
-        'eth': os.path.join(BASE_DIR, 'data', 'ETH'),
-        'sun3d': os.path.join(BASE_DIR, 'data', 'SUN3D'),
-        'both': os.path.join(BASE_DIR, 'data')
+        'eth': os.path.join(PARENT_PARENT_DIR, 'data', 'ETH'),  # Use PARENT_DIR here
+        'sun3d': os.path.join(PARENT_PARENT_DIR, 'data', 'SUN3D'),  # Use PARENT_DIR here
+        'both': os.path.join(PARENT_PARENT_DIR)
     }
     args.dataset_path = DATA_DIR.get(args.dataset_type)
+
+    transform = torchvision.transforms.Compose([
+        transforms.Mesh2Points(), 
+        transforms.OnUnitCube(), 
+        transforms.Resampler(args.num_points)
+        ])
 
     if args.dataset_type == 'modelnet':
         if not os.path.exists(args.dataset_path):
@@ -367,10 +378,11 @@ def get_datasets(args):
             testset = TransformedDataset(testdata, transforms.RandomTransformSE3(0.8, mag_randomly))
             return testset
 
+
     elif args.dataset_type == 'eth':
-        args.dataset_path = os.path.join(DATA_DIR['eth'])
+        # args.dataset_path = os.path.join(DATA_DIR['eth'])
         if args.mode == 'train':
-            args.categoryfile = os.path.join(BASE_DIR, 'data', 'categories', 'eth_train.txt')
+            args.categoryfile = os.path.join(BASE_DIR, 'categories', 'eth_train.txt')
             cinfo = get_categories(args)
 
             transform = torchvision.transforms.Compose([
@@ -446,22 +458,28 @@ def get_datasets(args):
 
     elif args.dataset_type == 'both':
         if args.mode == 'train':
-            args.dataset_path_eth = DATA_DIR['eth']
-            args.categoryfile_eth = os.path.join(BASE_DIR, 'data', 'categories', 'eth_train.txt')
+            transform = torchvision.transforms.Compose([
+                transforms.Mesh2Points(), 
+                transforms.OnUnitCube(), 
+                transforms.Resampler(args.num_points)
+            ])
+
+            args.dataset_path = DATA_DIR['eth']
+            args.categoryfile = os.path.join(BASE_DIR, 'categories', 'eth_train.txt')
             
             cinfo_eth = get_categories(args)
 
             eth_data = ETHDataset(args.dataset_path, transform=transform, classinfo=cinfo_eth)
 
             args.dataset_path_sun3d = DATA_DIR['sun3d']
-            args.categoryfile_sun3d = os.path.join(BASE_DIR, 'data', 'categories', 'sun3d_train.txt')
+            args.categoryfile = os.path.join(BASE_DIR, 'categories', 'sun3d_train.txt')
 
-            args.dataset_path = '/home/jdaniels/project/data/SUN3D'
-            args.categoryfile = './data/categories/sun3d_train.txt'
+            # args.dataset_path = '/home/jdaniels/project/data/SUN3D'
+            # args.categoryfile = './data/categories/sun3d_train.txt'
 
             cinfo_sun3d = get_categories(args)
 
-            sun3d_data = SUN3D(args.dataset_path, transform=transform, classinfo=cinfo_sun3d)
+            sun3d_data = SUN3D(args.dataset_path_sun3d, transform=transform, classinfo=cinfo_sun3d)
 
             # Splitting each dataset into train and test data
             traindata_eth, testdata_eth = eth_data.split(0.8)
@@ -480,9 +498,9 @@ def get_datasets(args):
         else:
             # Direct paths adjusted using DATA_DIR
             args.dataset_path_eth = DATA_DIR['eth']
-            args.categoryfile_eth = os.path.join(BASE_DIR, 'data', 'categories', 'eth_test.txt')
+            args.categoryfile_eth = os.path.join(BASE_DIR, 'fmr', 'data', 'categories', 'eth_test.txt')
             args.dataset_path_sun3d = DATA_DIR['sun3d']
-            args.categoryfile_sun3d = os.path.join(BASE_DIR, 'data', 'categories', 'sun3d_test.txt')
+            args.categoryfile_sun3d = os.path.join(BASE_DIR, 'fmr', 'data', 'categories', 'sun3d_test.txt')
 
             cinfo_eth = get_categories(args, categoryfile=args.categoryfile_eth)
             cinfo_sun3d = get_categories(args, categoryfile=args.categoryfile_sun3d)
