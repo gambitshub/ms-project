@@ -273,60 +273,68 @@ def get_categories(args):
     return cinfo
 
 
-# global dataset function, could call to get dataset
 def get_datasets(args):
+    BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+    DATA_DIR = {
+        'modelnet': os.path.join(BASE_DIR, 'fmr', 'data', 'ModelNet40'),
+        '7scene': os.path.join(BASE_DIR, 'fmr', 'data', '7scene'),
+        'eth': os.path.join(BASE_DIR, 'data', 'ETH'),
+        'sun3d': os.path.join(BASE_DIR, 'data', 'SUN3D'),
+        'both': os.path.join(BASE_DIR, 'data')
+    }
+    args.dataset_path = DATA_DIR.get(args.dataset_type)
+
     if args.dataset_type == 'modelnet':
-        # download modelnet40 for training
-        BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-        DATA_DIR = os.path.join(BASE_DIR, 'ModelNet40')
-        if not os.path.exists(DATA_DIR):
+        if not os.path.exists(args.dataset_path):
             www = 'http://modelnet.cs.princeton.edu/ModelNet40.zip'
             zipfile = os.path.basename(www)
-            os.system('wget %s; unzip %s' % (www, zipfile))
-            os.system('mv %s %s' % (zipfile[:-4], BASE_DIR))
-            os.system('rm %s' % (zipfile))
-        if not os.path.exists(DATA_DIR):
-            exit(
-                "Please download ModelNET40 and put it in the data folder, the download link is http://modelnet.cs.princeton.edu/ModelNet40.zip")
+            os.system(f'wget {www}; unzip {zipfile}')
+            os.system(f'mv {zipfile[:-4]} {BASE_DIR}')
+            os.system(f'rm {zipfile}')
+        if not os.path.exists(args.dataset_path):
+            exit("Please download ModelNET40 and put it in the fmr/data folder...")
+
 
         if args.mode == 'train':
-            # set path and category file for training
-            args.dataset_path = './data/ModelNet40'
-            args.categoryfile = './data/categories/modelnet40_half1.txt'
+            args.categoryfile = os.path.join(BASE_DIR, 'fmr', 'data', 'categories', 'modelnet40_half1.txt')
             cinfo = get_categories(args)
-            transform = torchvision.transforms.Compose([ \
-                transforms.Mesh2Points(), \
-                transforms.OnUnitCube(), \
-                transforms.Resampler(args.num_points), \
-                ])
+            transform = torchvision.transforms.Compose([
+                transforms.Mesh2Points(),
+                transforms.OnUnitCube(),
+                transforms.Resampler(args.num_points),
+            ])
+
             traindata = ModelNet(args.dataset_path, train=1, transform=transform, classinfo=cinfo, is_uniform_sampling=args.uniformsampling)
             testdata = ModelNet(args.dataset_path, train=0, transform=transform, classinfo=cinfo, is_uniform_sampling=args.uniformsampling)
+
             mag_randomly = True
             trainset = TransformedDataset(traindata, transforms.RandomTransformSE3(args.mag, mag_randomly))
             testset = TransformedDataset(testdata, transforms.RandomTransformSE3(args.mag, mag_randomly))
-            return trainset, testset
-        else:
-            # set path and category file for test
-            args.dataset_path = './data/ModelNet40'
-            args.categoryfile = './data/categories/modelnet40_half1.txt'
-            cinfo = get_categories(args)
 
-            # get the ground truth perturbation
+            return trainset, testset
+
+        else:
+            args.categoryfile = os.path.join(BASE_DIR, 'fmr', 'data', 'categories', 'modelnet40_half1.txt')
+            cinfo = get_categories(args)
+            transform = torchvision.transforms.Compose([
+                transforms.Mesh2Points(),
+                transforms.OnUnitCube()
+            ])
+
             perturbations = None
             if args.perturbations:
                 perturbations = numpy.loadtxt(args.perturbations, delimiter=',')
 
-            transform = torchvision.transforms.Compose([transforms.Mesh2Points(), transforms.OnUnitCube()])
-
             testdata = ModelNet(args.dataset_path, train=0, transform=transform, classinfo=cinfo, is_uniform_sampling=args.uniformsampling)
             testset = TransformedFixedDataset(testdata, perturbations)
+
             return testset
 
+
     elif args.dataset_type == '7scene':
+        args.dataset_path = os.path.join(DATA_DIR['7scene'])
         if args.mode == 'train':
-            # set path and category file for training
-            args.dataset_path = './data/7scene'
-            args.categoryfile = './data/categories/7scene_train.txt'
+            args.categoryfile = os.path.join(BASE_DIR, 'data', 'categories', '7scene_train.txt')
             cinfo = get_categories(args)
 
             transform = torchvision.transforms.Compose([ \
@@ -341,10 +349,9 @@ def get_datasets(args):
             trainset = TransformedDataset(traindata, transforms.RandomTransformSE3(args.mag, mag_randomly))
             testset = TransformedDataset(testdata, transforms.RandomTransformSE3(args.mag, mag_randomly))
             return trainset, testset
+            
         else:
-            # set path and category file for testing
-            args.dataset_path = './data/7scene'
-            args.categoryfile = './data/categories/7scene_test.txt'
+            args.categoryfile = os.path.join(BASE_DIR, 'data', 'categories', '7scene_test.txt')
             cinfo = get_categories(args)
 
             transform = torchvision.transforms.Compose([ \
@@ -361,10 +368,9 @@ def get_datasets(args):
             return testset
 
     elif args.dataset_type == 'eth':
+        args.dataset_path = os.path.join(DATA_DIR['eth'])
         if args.mode == 'train':
-            # Set path and category file for both training and testing
-            args.dataset_path = '/home/jdaniels/project/data/ETH'
-            args.categoryfile = './data/categories/eth_train.txt'
+            args.categoryfile = os.path.join(BASE_DIR, 'data', 'categories', 'eth_train.txt')
             cinfo = get_categories(args)
 
             transform = torchvision.transforms.Compose([
@@ -383,9 +389,7 @@ def get_datasets(args):
             return trainset, testset
             
         else:
-            # Set path and category file for both training and testing
-            args.dataset_path = '/home/jdaniels/project/data/ETH'
-            args.categoryfile = './data/categories/eth_test.txt'
+            args.categoryfile = os.path.join(BASE_DIR, 'data', 'categories', 'eth_test.txt')
             cinfo = get_categories(args)
 
             transform = torchvision.transforms.Compose([
@@ -402,10 +406,9 @@ def get_datasets(args):
             return testset
 
     elif args.dataset_type == 'sun3d':
+        args.dataset_path = os.path.join(DATA_DIR['sun3d'])
         if args.mode == 'train':
-            # Set path and category file for both training and testing
-            args.dataset_path = '/home/jdaniels/project/data/SUN3D'
-            args.categoryfile = './data/categories/sun3d_train.txt'
+            args.categoryfile = os.path.join(BASE_DIR, 'data', 'categories', 'sun3d_train.txt')
             cinfo = get_categories(args)
 
             transform = torchvision.transforms.Compose([
@@ -422,11 +425,9 @@ def get_datasets(args):
             testset = TransformedDataset(testdata, transforms.RandomTransformSE3(args.mag, mag_randomly))
 
             return trainset, testset
-            
         else:
-            # Set path and category file for both training and testing
-            args.dataset_path = '/home/jdaniels/project/data/SUN3D'
-            args.categoryfile = './data/categories/sun3d_test.txt'
+            args.categoryfile = os.path.join(BASE_DIR, 'data', 'categories', 'sun3d_test.txt')
+
             cinfo = get_categories(args)
 
             transform = torchvision.transforms.Compose([
@@ -442,22 +443,18 @@ def get_datasets(args):
 
             return testset
 
+
     elif args.dataset_type == 'both':
         if args.mode == 'train':
-
-            transform = torchvision.transforms.Compose([
-                transforms.Mesh2Points(), 
-                transforms.OnUnitCube(), 
-                transforms.Resampler(args.num_points)
-            ])
-
-            # Set path and category file for both ETH and SUN3D
-            args.dataset_path = '/home/jdaniels/project/data/ETH'
-            args.categoryfile = './data/categories/eth_train.txt'
-
+            args.dataset_path_eth = DATA_DIR['eth']
+            args.categoryfile_eth = os.path.join(BASE_DIR, 'data', 'categories', 'eth_train.txt')
+            
             cinfo_eth = get_categories(args)
 
             eth_data = ETHDataset(args.dataset_path, transform=transform, classinfo=cinfo_eth)
+
+            args.dataset_path_sun3d = DATA_DIR['sun3d']
+            args.categoryfile_sun3d = os.path.join(BASE_DIR, 'data', 'categories', 'sun3d_train.txt')
 
             args.dataset_path = '/home/jdaniels/project/data/SUN3D'
             args.categoryfile = './data/categories/sun3d_train.txt'
@@ -479,13 +476,13 @@ def get_datasets(args):
             testset = TransformedDataset(testdata, transforms.RandomTransformSE3(args.mag, mag_randomly))
 
             return trainset, testset
-
+            
         else:
-            # In test mode, we would usually use the test split of the data
-            args.dataset_path_eth = '/home/jdaniels/project/data/ETH'
-            args.categoryfile_eth = './data/categories/eth_test.txt'
-            args.dataset_path_sun3d = '/home/jdaniels/project/data/SUN3D'
-            args.categoryfile_sun3d = './data/categories/sun3d_test.txt'
+            # Direct paths adjusted using DATA_DIR
+            args.dataset_path_eth = DATA_DIR['eth']
+            args.categoryfile_eth = os.path.join(BASE_DIR, 'data', 'categories', 'eth_test.txt')
+            args.dataset_path_sun3d = DATA_DIR['sun3d']
+            args.categoryfile_sun3d = os.path.join(BASE_DIR, 'data', 'categories', 'sun3d_test.txt')
 
             cinfo_eth = get_categories(args, categoryfile=args.categoryfile_eth)
             cinfo_sun3d = get_categories(args, categoryfile=args.categoryfile_sun3d)
@@ -505,3 +502,6 @@ def get_datasets(args):
             testset = TransformedDataset(testdata, transforms.RandomTransformSE3(args.mag, True))
 
             return testset
+
+    else:
+        raise ValueError(f"Unsupported dataset type: {args.dataset_type}")
