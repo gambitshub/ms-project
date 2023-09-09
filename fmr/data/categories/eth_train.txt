@@ -1,0 +1,6 @@
+gazebo_summer
+hauptgebaude
+mountain
+stairs
+wood_autumn
+wood_summer
