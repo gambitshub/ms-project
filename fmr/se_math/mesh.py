@@ -11,7 +11,21 @@ from plyfile import PlyData
 import open3d as o3d
 import numpy as np
 import pandas as pd
+import open3d as o3d
 
+def downsample_point_cloud(pcd: o3d.geometry.PointCloud, 
+                           voxel_size: float) -> o3d.geometry.PointCloud:
+    """
+    Downsample a point cloud using a voxel grid filter.
+
+    Parameters:
+    - pcd: The original point cloud.
+    - voxel_size: The size of the voxel grid.
+
+    Returns:
+    - The downsampled point cloud.
+    """
+    return pcd.voxel_down_sample(voxel_size)
 
 class Mesh:
     def __init__(self):
@@ -225,40 +239,59 @@ def objread(filepath, points_only=True):
 
 
 def plyread(filepath, points_only=True):
-    # read binary ply file and return [x, y, z] array
+    """ Read binary ply file, downsample, and return a mesh. """
     data = PlyData.read(filepath)
     vertex = data['vertex']
-
     (x, y, z) = (vertex[t] for t in ('x', 'y', 'z'))
-    num_verts = len(x)
+    points = np.array([x, y, z]).T
+
+    pcd = o3d.geometry.PointCloud()
+    pcd.points = o3d.utility.Vector3dVector(points)
+    pcd = downsample_point_cloud(pcd, 0.05)
+    points = np.asarray(pcd.points)
 
     mesh = Mesh()
-
-    for v in range(num_verts):
-        vp = tuple(float(s) for s in [x[v], y[v], z[v]])
-        mesh._vertices.append(vp)
-
+    mesh._vertices = list(map(tuple, points))
     return mesh
 
+    # # read binary ply file and return [x, y, z] array
+    # data = PlyData.read(filepath)
+    # vertex = data['vertex']
+
+    # (x, y, z) = (vertex[t] for t in ('x', 'y', 'z'))
+    # num_verts = len(x)
+
+    # mesh = Mesh()
+
+    # for v in range(num_verts):
+    #     vp = tuple(float(s) for s in [x[v], y[v], z[v]])
+    #     mesh._vertices.append(vp)
+
+    # return mesh
+
 def pcdread(filepath):
-    """ Read PCD file and return a point cloud """
+    """ Read PCD file, downsample, and return a mesh. """
     pcd = o3d.io.read_point_cloud(filepath)
+
+    pcd = downsample_point_cloud(pcd, 0.05)
+
     points = np.asarray(pcd.points)
     mesh = Mesh()
     mesh._vertices = list(map(tuple, points))
     return mesh
 
 def csvread(filepath):
-    # Read CSV file and return a point cloud
+    """ Read CSV file, downsample, and return a mesh. """
     df = pd.read_csv(filepath)
-    
-    # Select only the x, y, and z columns and convert to numpy array
     points = df[['x', 'y', 'z']].values
 
-    # Create a Mesh object
+    pcd = o3d.geometry.PointCloud()
+    pcd.points = o3d.utility.Vector3dVector(points)
+    pcd = downsample_point_cloud(pcd, 0.05)
+    points = np.asarray(pcd.points)
+        
     mesh = Mesh()
     mesh._vertices = list(map(tuple, points))
-
     return mesh
 
 
